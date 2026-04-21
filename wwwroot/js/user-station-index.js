@@ -1,4 +1,5 @@
-﻿(function () {
+﻿
+(function () {
     const config = window.stationPageConfig || {};
     const MAP4D_API_KEY = config.apiKey || window.MAP4D_API_KEY || '';
     const isAuthenticated = String(config.isAuthenticated) === 'true' || config.isAuthenticated === true;
@@ -17,7 +18,7 @@
     let keywordSuggestAbortController = null;
     let hasInitialFit = false;
     let infoPanel = null;
-    let lastNearMeRadiusKm = null;
+    let isLocatingMe = false;
 
     document.addEventListener('DOMContentLoaded', async function () {
         try {
@@ -45,6 +46,14 @@
             zoom: 6,
             controls: true
         });
+
+        if (typeof stationMap.addListener === 'function') {
+            stationMap.addListener('click', function () {
+                selectedStationId = null;
+                hideInfoPanel();
+                highlightActiveListItem();
+            });
+        }
 
         await wait(180);
     }
@@ -167,48 +176,132 @@
         stationPager.setItems(currentStations);
         renderMarkers(currentStations, true);
         hideInfoPanel();
+        highlightActiveListItem();
+
+        const note = document.getElementById('locationNote');
+        if (note) {
+            note.innerHTML = 'Chưa dùng vị trí hiện tại. Khi bấm <strong>Gần tôi</strong>, map sẽ zoom gần về vị trí của bạn nhưng vẫn giữ nguyên tất cả trạm trên bản đồ.';
+        }
     }
 
+    // SỬA CHÍNH Ở ĐÂY:
+    // - bấm Gần tôi là zoom map ngay
+    // - không lọc bỏ trạm nào
+    // - lăn chuột ra vẫn thấy đủ trạm
     async function zoomNearMe() {
+        if (isLocatingMe) {
+            return;
+        }
+
+        const btn = document.getElementById('btnUseLocation');
+        const note = document.getElementById('locationNote');
+
         try {
             if (!navigator.geolocation) {
                 alert('Trình duyệt không hỗ trợ định vị.');
                 return;
             }
 
+            isLocatingMe = true;
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Đang lấy vị trí';
+            }
+
             const position = await getCurrentPosition();
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
+            const lat = Number(position.coords.latitude);
+            const lng = Number(position.coords.longitude);
             const radiusKm = getFilterValues().radiusKm;
 
             userPosition = { lat, lng };
-            lastNearMeRadiusKm = radiusKm;
-            renderUserMarker(lat, lng);
-            focusLocationByRadius(userPosition, radiusKm);
 
-            const nearbyStations = (currentStations || []).filter(station => calcDistanceKm(userPosition, station) <= radiusKm);
-            const points = [userPosition].concat(nearbyStations.map(station => ({ lat: Number(station.latitude), lng: Number(station.longitude) })));
+            // Giữ nguyên toàn bộ trạm trên map
+            renderMarkers(currentStations, false);
 
-            if (points.length > 1) {
-                TramSacMap4D.fitBounds(stationMap, points, userPosition, getRadiusZoom(radiusKm));
-            } else {
-                focusMap(userPosition, getRadiusZoom(radiusKm));
-            }
+            const nearbyStations = (currentStations || []).filter(station => {
+                const distance = calcDistanceKm(userPosition, station);
+                return Number.isFinite(distance) && distance <= radiusKm;
+            });
 
-            const note = document.getElementById('locationNote');
+            await wait(80);
+            zoomMapToUserRadius(userPosition, radiusKm, nearbyStations);
+
             if (note) {
-                if (nearbyStations.length > 0) {
-                    note.innerHTML = `Đã xác định vị trí của bạn. Bản đồ đang zoom quanh <strong>bạn + ${nearbyStations.length} trạm</strong> trong phạm vi khoảng <strong>${radiusKm} km</strong>. Lăn chuột zoom ra vẫn xem được toàn bộ trạm.`;
-                } else {
-                    note.innerHTML = `Đã xác định vị trí của bạn nhưng chưa có trạm nào trong phạm vi khoảng <strong>${radiusKm} km</strong>. Bản đồ đang zoom về vị trí hiện tại của bạn.`;
-                }
+                note.innerHTML = nearbyStations.length > 0
+                    ? `Map đang zoom quanh vị trí của bạn với bán kính khoảng <strong>${radiusKm} km</strong>. Có <strong>${nearbyStations.length}</strong> trạm gần bạn trong phạm vi này, nhưng các trạm khác vẫn được giữ nguyên trên bản đồ.`
+                    : `Map đang zoom quanh vị trí của bạn với bán kính khoảng <strong>${radiusKm} km</strong>. Hiện chưa có trạm nào trong phạm vi này, nhưng toàn bộ trạm vẫn còn trên bản đồ.`;
             }
 
-            updateResultUI(currentStations.length, `Đang hiển thị toàn bộ trạm. Bản đồ đang zoom quanh vị trí của bạn trong bán kính khoảng ${radiusKm} km.`);
+            updateResultUI(currentStations.length, `Đang zoom quanh vị trí hiện tại của bạn.`);
         } catch (error) {
             console.error(error);
             alert('Không lấy được vị trí hiện tại. Hãy kiểm tra quyền định vị của trình duyệt.');
+        } finally {
+            isLocatingMe = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-location-dot mr-2"></i>Gần tôi';
+            }
         }
+    }
+    function zoomMapToUserRadius(position, radiusKm, nearbyStations) {
+        if (!stationMap || !position) {
+            return;
+        }
+
+        const lat = Number(position.lat);
+        const lng = Number(position.lng);
+        const radius = Number(radiusKm) || 3;
+
+        const latDelta = radius / 111.32;
+        const lngBase = 111.32 * Math.max(Math.cos(lat * Math.PI / 180), 0.15);
+        const lngDelta = radius / lngBase;
+
+        const points = [
+            { lat: lat - latDelta, lng: lng - lngDelta },
+            { lat: lat + latDelta, lng: lng + lngDelta }
+        ];
+
+        (nearbyStations || []).forEach(station => {
+            points.push({
+                lat: Number(station.latitude),
+                lng: Number(station.longitude)
+            });
+        });
+
+        // fitBounds sẽ zoom chắc hơn setCenter/setZoom trên Map4D hiện tại
+        TramSacMap4D.fitBounds(stationMap, points, position, 15);
+
+        window.setTimeout(function () {
+            TramSacMap4D.fitBounds(stationMap, points, position, 15);
+        }, 180);
+
+        window.setTimeout(function () {
+            TramSacMap4D.fitBounds(stationMap, points, position, 15);
+        }, 420);
+    }
+
+
+
+    function forceFocusMap(lat, lng, zoom) {
+        const apply = function () {
+            try {
+                if (stationMap && typeof stationMap.setCenter === 'function') {
+                    stationMap.setCenter({ lat: Number(lat), lng: Number(lng) });
+                }
+                if (stationMap && typeof stationMap.setZoom === 'function') {
+                    stationMap.setZoom(Number(zoom));
+                }
+            } catch (error) {
+                console.error('Map4D force focus error:', error);
+            }
+        };
+
+        apply();
+        window.requestAnimationFrame(apply);
+        window.setTimeout(apply, 120);
+        window.setTimeout(apply, 280);
+        window.setTimeout(apply, 520);
     }
 
     function filterStations(items, filters) {
@@ -222,7 +315,9 @@
             }
 
             if (keyword) {
-                const haystack = [station.name, station.address, station.status].map(normalize).join(' ');
+                const haystack = [station.name, station.address, station.status, station.chargerType, station.power]
+                    .map(normalize)
+                    .join(' ');
                 if (!haystack.includes(keyword)) {
                     return false;
                 }
@@ -319,8 +414,8 @@
                             <div class="station-meta-value">${Number(station.averageRating || 0).toFixed(1)} (${Number(station.reviewCount || 0)})</div>
                         </div>
                         <div class="station-meta-box">
-                            <div class="station-meta-label">Tọa độ</div>
-                            <div class="station-meta-value">${Number(station.latitude || 0).toFixed(4)}, ${Number(station.longitude || 0).toFixed(4)}</div>
+                            <div class="station-meta-label">Loại sạc</div>
+                            <div class="station-meta-value">${escapeHtml(station.chargerType || 'Đang cập nhật')}</div>
                         </div>
                     </div>
 
@@ -362,6 +457,8 @@
                 focusStation(stationId, true);
             });
         });
+
+        highlightActiveListItem();
     }
 
     function renderMarkers(stations, fitAll) {
@@ -373,34 +470,29 @@
         }
 
         stations.forEach(station => {
-            const lat = Number(station.latitude);
-            const lng = Number(station.longitude);
-            if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-                return;
-            }
-
-            const position = { lat, lng };
-            const marker = createPinMarker(position, station.name || 'Trạm sạc');
+            const position = { lat: Number(station.latitude), lng: Number(station.longitude) };
+            const marker = createStationPinMarker(position, station.name || 'Trạm sạc');
             if (!marker) {
                 return;
             }
 
-            const onMarkerClick = function () {
-                selectedStationId = Number(station.id);
-                if (stationPager && typeof stationPager.goToItem === 'function') {
-                    stationPager.goToItem(x => Number(x.id) === Number(station.id));
-                }
-                openInfoPanel(station);
-                focusMap(position, 15);
-            };
-
             if (typeof marker.addListener === 'function') {
-                marker.addListener('click', onMarkerClick);
+                marker.addListener('click', function () {
+                    selectedStationId = Number(station.id);
+                    stationPager.goToItem(x => Number(x.id) === Number(station.id));
+                    openInfoPanel(station);
+                    focusMap(position, 15);
+                    highlightActiveListItem();
+                });
             }
 
             currentMarkers.push({ id: Number(station.id), marker, position });
             points.push(position);
         });
+
+        if (userPosition) {
+            renderUserMarker(userPosition.lat, userPosition.lng);
+        }
 
         const mapChip = document.getElementById('mapChip');
         if (mapChip) {
@@ -418,67 +510,32 @@
             TramSacMap4D.clearObject(userMarker);
         }
 
-        userMarker = createUserDotMarker({ lat: Number(lat), lng: Number(lng) }, 'Vị trí của bạn');
+        userMarker = createUserMarker({ lat: Number(lat), lng: Number(lng) }, 'Vị trí của bạn');
     }
 
-    function createPinMarker(position, title) {
-        const svg = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="34" height="46" viewBox="0 0 34 46"><path d="M17 1C8.164 1 1 8.164 1 17c0 11.6 14.025 26.04 15.617 27.65a.6.6 0 0 0 .766 0C18.975 43.04 33 28.6 33 17 33 8.164 25.836 1 17 1z" fill="#ef4444" stroke="white" stroke-width="2"/><circle cx="17" cy="17" r="6.5" fill="white"/></svg>`);
-        const iconUrl = `data:image/svg+xml;charset=UTF-8,${svg}`;
-
+    function createStationPinMarker(position, title) {
         try {
             return TramSacMap4D.createMarker(stationMap, {
                 position,
                 title: title || '',
-                icon: {
-                    url: iconUrl,
-                    width: 34,
-                    height: 46
-                },
-                anchor: { x: 0.5, y: 1.0 },
-                windowAnchor: { x: 0.5, y: 0.0 },
-                visible: true,
-                userInteractionEnabled: true,
-                zIndex: 20
+                zIndex: 10
             });
         } catch (error) {
-            console.warn('Map4D pin icon fallback:', error);
-            try {
-                return TramSacMap4D.createMarker(stationMap, {
-                    position,
-                    title: title || '',
-                    visible: true,
-                    userInteractionEnabled: true,
-                    label: '•',
-                    zIndex: 20
-                });
-            } catch (fallbackError) {
-                console.error('Map4D marker error:', fallbackError);
-                return null;
-            }
+            console.error('Map4D marker error:', error);
+            return null;
         }
     }
 
-    function createUserDotMarker(position, title) {
-        const svg = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="#2563eb" stroke="white" stroke-width="4" /></svg>`);
-        const iconUrl = `data:image/svg+xml;charset=UTF-8,${svg}`;
-
+    function createUserMarker(position, title) {
         try {
             return TramSacMap4D.createMarker(stationMap, {
                 position,
                 title: title || '',
-                icon: {
-                    url: iconUrl,
-                    width: 24,
-                    height: 24
-                },
-                anchor: { x: 0.5, y: 0.5 },
-                visible: true,
-                userInteractionEnabled: true,
-                zIndex: 30
+                zIndex: 20
             });
         } catch (error) {
-            console.warn('Map4D user dot fallback:', error);
-            return TramSacMap4D.createMarker(stationMap, { position, title: title || '', visible: true, zIndex: 30 });
+            console.error('Map4D user marker error:', error);
+            return null;
         }
     }
 
@@ -499,21 +556,7 @@
         if (openPanel) {
             openInfoPanel(station);
         }
-    }
-
-    function focusLocationByRadius(position, radiusKm) {
-        focusMap(position, getRadiusZoom(radiusKm));
-    }
-
-    function getRadiusZoom(radiusKm) {
-        const zoomMap = {
-            1: 16,
-            2: 15,
-            3: 14,
-            4: 13,
-            5: 12
-        };
-        return zoomMap[Number(radiusKm)] || 14;
+        highlightActiveListItem();
     }
 
     function focusMap(position, zoom) {
@@ -544,7 +587,26 @@
             return infoPanel;
         }
 
-        infoPanel = document.getElementById('stationMapInfo');
+        const stage = document.querySelector('.station-map-stage');
+        if (!stage) {
+            return null;
+        }
+
+        infoPanel = document.createElement('div');
+        infoPanel.id = 'stationMapInfoPanel';
+        infoPanel.style.position = 'absolute';
+        infoPanel.style.left = '18px';
+        infoPanel.style.top = '18px';
+        infoPanel.style.zIndex = '30';
+        infoPanel.style.width = 'min(380px, calc(100% - 36px))';
+        infoPanel.style.padding = '16px';
+        infoPanel.style.borderRadius = '18px';
+        infoPanel.style.background = 'rgba(255,255,255,0.98)';
+        infoPanel.style.border = '1px solid #dfe9e5';
+        infoPanel.style.boxShadow = '0 18px 40px rgba(15,25,21,.14)';
+        infoPanel.style.display = 'none';
+        stage.appendChild(infoPanel);
+
         return infoPanel;
     }
 
@@ -558,19 +620,18 @@
         const reviewCount = Number(station.reviewCount || 0);
         const totalPoleCount = Number(station.totalPoleCount || 0);
         const activePoleCount = Number(station.activePoleCount || station.availablePoleCount || 0);
-        const statusClass = normalize(station.status) === normalize('Hoạt động') ? '#177b46' : '#b54708';
+        const statusColor = normalize(station.status) === normalize('Hoạt động') ? '#177b46' : '#b54708';
         const distanceKm = userPosition ? calcDistanceKm(userPosition, station) : null;
         const distanceHtml = Number.isFinite(distanceKm)
             ? `<div style="font-size:13px;color:#5d6e67;margin-top:6px;">Cách bạn khoảng <strong>${distanceKm.toFixed(1)} km</strong></div>`
             : '';
 
         panel.innerHTML = `
-            <div class="station-map-popup-arrow"></div>
-            <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;position:relative;">
+            <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
                 <div>
                     <div style="font-size:20px;font-weight:800;color:#18231f;line-height:1.25;">${escapeHtml(station.name || 'Trạm sạc')}</div>
-                    <div style="font-size:14px;color:#5d6e67;margin-top:6px;line-height:1.45;">${escapeHtml(station.address || '-')}</div>
-                    <div style="font-size:13px;color:#6b7f77;margin-top:6px;">Loại sạc: <strong>${escapeHtml(station.chargerType || 'Đang cập nhật')}</strong> · Công suất: <strong>${escapeHtml(station.power || station.maxPower || 'Đang cập nhật')}</strong></div>
+                    <div style="font-size:14px;color:#5d6e67;margin-top:6px;">${escapeHtml(station.address || '-')}</div>
+                    <div style="font-size:13px;color:#6b7f77;margin-top:6px;">Loại sạc: <strong>${escapeHtml(station.chargerType || 'Đang cập nhật')}</strong> · Công suất: <strong>${escapeHtml(station.power || 'Đang cập nhật')}</strong></div>
                     ${distanceHtml}
                 </div>
                 <button type="button" id="stationMapInfoClose" style="border:none;background:#f3f7f5;color:#18231f;width:32px;height:32px;border-radius:999px;font-weight:800;cursor:pointer;">×</button>
@@ -579,7 +640,7 @@
             <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px;">
                 <div style="padding:10px 12px;border-radius:14px;background:#f8fbfa;border:1px solid #e4eeea;">
                     <div style="font-size:12px;color:#70817a;">Trạng thái</div>
-                    <div style="font-size:15px;font-weight:800;color:${statusClass};">${escapeHtml(station.status || '-')}</div>
+                    <div style="font-size:15px;font-weight:800;color:${statusColor};">${escapeHtml(station.status || '-')}</div>
                 </div>
                 <div style="padding:10px 12px;border-radius:14px;background:#f8fbfa;border:1px solid #e4eeea;">
                     <div style="font-size:12px;color:#70817a;">Đánh giá</div>
@@ -601,7 +662,8 @@
             </div>
         `;
 
-        panel.classList.remove('is-hidden');
+        panel.style.display = 'block';
+        panel.classList.add('is-open');
 
         panel.querySelector('#stationMapInfoClose')?.addEventListener('click', hideInfoPanel);
         panel.querySelector('#stationMapDirectionBtn')?.addEventListener('click', function () {
@@ -610,12 +672,17 @@
     }
 
     function hideInfoPanel() {
-        const panel = ensureInfoPanel();
-        if (!panel) {
+        if (!infoPanel) {
             return;
         }
-        panel.classList.add('is-hidden');
-        panel.innerHTML = '';
+        infoPanel.style.display = 'none';
+        infoPanel.classList.remove('is-open');
+    }
+
+    function highlightActiveListItem() {
+        document.querySelectorAll('.station-item').forEach(item => {
+            item.classList.toggle('active', Number(item.dataset.id) === Number(selectedStationId));
+        });
     }
 
     function updateKpis(stations) {
@@ -634,7 +701,7 @@
     function setLoadingState(message) {
         const list = document.getElementById('stationList');
         if (list) {
-            list.innerHTML = `<div class="station-loading">${escapeHtml(message)}</div>`;
+            list.innerHTML = `<div class="station-loading" style="grid-column:1/-1;">${escapeHtml(message)}</div>`;
         }
     }
 
@@ -662,7 +729,7 @@
         if (radius) radius.value = '3';
         const note = document.getElementById('locationNote');
         if (note) {
-            note.innerHTML = 'Chưa dùng vị trí hiện tại. Khi bấm <strong>Gần tôi</strong>, bản đồ sẽ chỉ zoom gần quanh vị trí của bạn theo bán kính đã chọn, nhưng các trạm khác vẫn còn trên map để bạn zoom ra xem tiếp.';
+            note.innerHTML = 'Chưa dùng vị trí hiện tại. Khi bấm <strong>Gần tôi</strong>, bản đồ sẽ chỉ zoom gần về vị trí của bạn theo bán kính đã chọn.';
         }
         closeKeywordSuggest();
         hideInfoPanel();

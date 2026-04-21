@@ -749,7 +749,7 @@
                     <div id="kpiActiveStations" class="station-kpi-value">0</div>
                 </div>
                 <div class="station-kpi-card">
-                    <div class="station-kpi-label">Tổng trụ hoạt động</div>
+                    <div class="station-kpi-label">Tổng trụ</div>
                     <div id="kpiActivePoles" class="station-kpi-value">0</div>
                 </div>
                 <div class="station-kpi-card">
@@ -880,5 +880,7 @@
             isAuthenticated: @(User.Identity != null && User.Identity.IsAuthenticated ? "true" : "false")
         };
     </script>
+
+    <script src="~/js/map4d-common.js" asp-append-version="true"></script>
     <script src="~/js/user-station-index.js" asp-append-version="true"></script>
 }

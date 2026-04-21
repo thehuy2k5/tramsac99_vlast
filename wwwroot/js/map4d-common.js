@@ -78,18 +78,34 @@ window.TramSacMap4D = (function () {
         }
     }
 
+    // FIX: thay vì chỉ setCenter/setZoom, tạo bounds nhỏ quanh vị trí để Map4D chắc chắn zoom.
     function focus(map, position, zoom) {
         if (!map || !position) {
             return;
         }
 
+        const targetZoom = Number(zoom || 15);
+        const lat = Number(position.lat);
+        const lng = Number(position.lng);
+
         const apply = function () {
             try {
-                if (typeof map.setCenter === 'function') {
-                    map.setCenter({ lat: Number(position.lat), lng: Number(position.lng) });
+                const latDelta = Math.max(0.0025, 0.03 / Math.max(targetZoom, 1));
+                const lngDelta = Math.max(0.0025, 0.03 / Math.max(targetZoom, 1));
+
+                if (typeof map4d !== 'undefined' && typeof map4d.LatLngBounds === 'function' && typeof map.fitBounds === 'function') {
+                    const bounds = new map4d.LatLngBounds();
+                    bounds.extend({ lat: lat - latDelta, lng: lng - lngDelta });
+                    bounds.extend({ lat: lat + latDelta, lng: lng + lngDelta });
+                    map.fitBounds(bounds, { padding: 40 });
+                    return;
                 }
-                if (typeof map.setZoom === 'function' && zoom !== undefined && zoom !== null) {
-                    map.setZoom(Number(zoom));
+
+                if (typeof map.setCenter === 'function') {
+                    map.setCenter({ lat, lng });
+                }
+                if (typeof map.setZoom === 'function') {
+                    map.setZoom(targetZoom);
                 }
             } catch (error) {
                 console.error('Map4D focus error:', error);
@@ -97,6 +113,7 @@ window.TramSacMap4D = (function () {
         };
 
         apply();
+        window.requestAnimationFrame(apply);
         window.setTimeout(apply, 120);
         window.setTimeout(apply, 320);
     }
