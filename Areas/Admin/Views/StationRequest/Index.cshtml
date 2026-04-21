@@ -1,0 +1,1338 @@
+﻿@model tramsac99.Areas.Admin.ViewModels.StationRequestIndexViewModel
+@using tramsac99.Areas.Admin.Models
+
+@{
+    ViewData["Title"] = "Xác nhận trạm sạc";
+
+    string GetStatusClass(string? status)
+    {
+        return status switch
+        {
+            var s when s == StationWorkflowStatus.Pending => "station-chip-warning",
+            var s when s == StationWorkflowStatus.Rejected => "station-chip-danger",
+            var s when s == StationWorkflowStatus.Completed => "station-chip",
+            _ => "station-chip-blue"
+        };
+    }
+
+    string GetRequestedStatusClass(string? status)
+    {
+        return status switch
+        {
+            var s when s == ChargingStatus.Active => "station-chip",
+            var s when s == ChargingStatus.Maintenance => "station-chip-warning",
+            var s when s == ChargingStatus.Error => "station-chip-danger",
+            _ => "station-chip-soft"
+        };
+    }
+
+    string GetStatusIcon(string? status)
+    {
+        return status switch
+        {
+            var s when s == StationWorkflowStatus.Pending => "far fa-clock",
+            var s when s == StationWorkflowStatus.Rejected => "fas fa-ban",
+            var s when s == StationWorkflowStatus.Completed => "far fa-check-circle",
+            var s when s == StationWorkflowStatus.Approved => "fas fa-check-double",
+            var s when s == StationWorkflowStatus.AwaitingPayment => "fas fa-wallet",
+            _ => "fas fa-info-circle"
+        };
+    }
+
+    string GetPaymentIcon(string? paymentStatus)
+    {
+        var normalized = (paymentStatus ?? string.Empty).Trim().ToLowerInvariant();
+        if (normalized.Contains("thanh toán") && !normalized.Contains("chưa")) return "fas fa-money-bill-wave";
+        if (normalized.Contains("chưa")) return "far fa-credit-card";
+        return "fas fa-wallet";
+    }
+
+    string GetTypeIcon(string? requestType)
+    {
+        return requestType switch
+        {
+            var s when s == StationOperationRequestType.StatusUpdate => "fas fa-power-off",
+            var s when s == StationOperationRequestType.AddPole => "fas fa-plus",
+            var s when s == StationOperationRequestType.UpdatePole => "fas fa-pen-square",
+            var s when s == StationOperationRequestType.DeletePole => "fas fa-trash-alt",
+            _ => "fas fa-tasks"
+        };
+    }
+
+    string GetTypeChipClass(string? requestType)
+    {
+        return requestType switch
+        {
+            var s when s == StationOperationRequestType.StatusUpdate => "station-chip-blue",
+            var s when s == StationOperationRequestType.AddPole => "station-chip",
+            var s when s == StationOperationRequestType.UpdatePole => "station-chip-warning",
+            var s when s == StationOperationRequestType.DeletePole => "station-chip-danger",
+            _ => "station-chip-soft"
+        };
+    }
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/user/assets/css/station-workflow.css" asp-append-version="true" />
+    <style>
+        .station-request-shell {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .station-list-overview {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .station-list-overview__card {
+            background: #fff;
+            border: 1px solid #dfe8f2;
+            border-radius: 22px;
+            padding: 18px 20px;
+            box-shadow: 0 18px 36px rgba(14, 32, 68, .06);
+            display: flex;
+            gap: 14px;
+            align-items: center;
+        }
+
+        .station-list-overview__icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #17406e;
+            background: linear-gradient(135deg, rgba(23, 64, 110, .12), rgba(30, 136, 229, .08));
+            flex-shrink: 0;
+        }
+
+        .station-list-overview__label {
+            font-size: 13px;
+            color: #6b7b93;
+            margin-bottom: 4px;
+        }
+
+        .station-list-overview__value {
+            font-size: 28px;
+            line-height: 1;
+            font-weight: 800;
+            color: #15365d;
+            margin-bottom: 4px;
+        }
+
+        .station-list-overview__hint {
+            font-size: 12px;
+            color: #8a99ad;
+        }
+
+        .station-request-panel {
+            background: #fff;
+            border: 1px solid #dfe8f2;
+            border-radius: 24px;
+            box-shadow: 0 20px 42px rgba(14, 32, 68, .06);
+            overflow: hidden;
+        }
+
+        .station-request-panel__header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 22px 24px 18px;
+            border-bottom: 1px solid #eef3f8;
+        }
+
+        .station-request-panel__title {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+        }
+
+        .station-request-panel__title-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(23, 64, 110, .12), rgba(30, 136, 229, .08));
+            color: #17406e;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .station-request-panel__title h3 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 800;
+            color: #173b68;
+        }
+
+        .station-request-panel__desc {
+            margin: 6px 0 0;
+            color: #6f7f94;
+            font-size: 14px;
+            max-width: 760px;
+        }
+
+        .station-request-panel__stats {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .station-request-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: #f5f8fc;
+            color: #173b68;
+            border: 1px solid #e1e8f0;
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        .station-request-panel__body {
+            padding: 22px 24px 24px;
+        }
+
+        .station-request-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .station-request-item {
+            border: 1px solid #e1e8f0;
+            border-radius: 20px;
+            background: linear-gradient(180deg, rgba(248, 251, 255, .88), rgba(255, 255, 255, 1));
+            overflow: hidden;
+            transition: .2s ease;
+        }
+
+            .station-request-item[open] {
+                border-color: #bdd2ea;
+                box-shadow: 0 16px 30px rgba(23, 64, 110, .08);
+            }
+
+        .station-request-summary {
+            list-style: none;
+            display: grid;
+            grid-template-columns: minmax(0, 1.8fr) minmax(220px, .9fr) minmax(220px, .9fr) auto;
+            gap: 14px;
+            align-items: center;
+            padding: 18px 20px;
+            cursor: pointer;
+        }
+
+            .station-request-summary::-webkit-details-marker {
+                display: none;
+            }
+
+        .station-request-main {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            min-width: 0;
+        }
+
+        .station-request-index {
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #17406e, #2d74c4);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            box-shadow: 0 10px 24px rgba(23, 64, 110, .18);
+            flex-shrink: 0;
+        }
+
+        .station-request-main h4 {
+            margin: 0;
+            color: #173b68;
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+
+        .station-request-subline {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 14px;
+            margin-top: 8px;
+            color: #5d6e86;
+            font-size: 13px;
+        }
+
+            .station-request-subline span {
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                min-width: 0;
+            }
+
+        .station-request-pill-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .station-request-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            border-radius: 999px;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #17406e;
+            background: #eef4fb;
+            border: 1px solid #d8e4f1;
+        }
+
+        .station-request-col {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            min-width: 0;
+        }
+
+        .station-request-col__label {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 12px;
+            color: #7b8ba0;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            font-weight: 700;
+        }
+
+        .station-request-col__value {
+            color: #173b68;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.45;
+            word-break: break-word;
+        }
+
+        .station-request-col__sub {
+            color: #75859a;
+            font-size: 13px;
+        }
+
+        .station-request-status {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .station-request-chevron {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            border: 1px solid #dbe5f0;
+            color: #17406e;
+            background: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: .2s ease;
+        }
+
+        .station-request-item[open] .station-request-chevron {
+            transform: rotate(180deg);
+            background: #17406e;
+            color: #fff;
+            border-color: #17406e;
+        }
+
+        .station-request-details {
+            padding: 0 20px 20px;
+            border-top: 1px solid #eef3f8;
+        }
+
+        .station-request-details__grid {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 18px;
+            padding-top: 18px;
+        }
+
+        .station-request-card {
+            border: 1px solid #e5ecf3;
+            border-radius: 18px;
+            padding: 18px;
+            background: #fff;
+        }
+
+        .station-request-card__title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0 0 14px;
+            color: #173b68;
+            font-size: 16px;
+            font-weight: 800;
+        }
+
+        .station-request-info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .station-request-info-item {
+            border-radius: 16px;
+            background: #f7fafc;
+            border: 1px solid #e6edf5;
+            padding: 14px;
+        }
+
+        .station-request-info-item__label {
+            color: #7a8ba1;
+            font-size: 12px;
+            margin-bottom: 7px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .station-request-info-item__value {
+            color: #173b68;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.45;
+            word-break: break-word;
+        }
+
+        .station-request-note {
+            border-radius: 16px;
+            padding: 14px 16px;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-top: 12px;
+        }
+
+            .station-request-note strong {
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                margin-right: 8px;
+            }
+
+            .station-request-note.user-note {
+                background: rgba(23, 64, 110, .05);
+                color: #173b68;
+                border: 1px solid rgba(23, 64, 110, .12);
+            }
+
+            .station-request-note.admin-note {
+                background: rgba(255, 179, 0, .08);
+                color: #7a4c00;
+                border: 1px solid rgba(255, 179, 0, .18);
+            }
+
+        .station-request-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .station-request-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            border: 1px solid #dbe5f0;
+            background: #fff;
+            color: #17406e;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+            .station-request-link:hover {
+                background: #f3f8fe;
+                text-decoration: none;
+                color: #17406e;
+            }
+
+        .station-request-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .station-request-actions__hint {
+            color: #75859a;
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .station-request-actions__btns {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+            .station-request-actions__btns form {
+                margin: 0;
+            }
+
+        .station-request-textarea {
+            min-height: 110px;
+        }
+
+        .station-request-readonly {
+            border-radius: 16px;
+            padding: 16px;
+            border: 1px dashed #cdd9e7;
+            background: #f8fbff;
+            color: #667790;
+            font-weight: 600;
+        }
+
+        .station-pagination-wrap {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        .station-pagination-summary {
+            color: #72849a;
+            font-size: 13px;
+        }
+
+        .station-pagination {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .station-pagination__link {
+            min-width: 42px;
+            height: 42px;
+            padding: 0 14px;
+            border-radius: 12px;
+            border: 1px solid #dbe5f0;
+            background: #fff;
+            color: #17406e;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            font-weight: 700;
+            transition: .2s ease;
+        }
+
+            .station-pagination__link:hover {
+                background: #f3f8fe;
+                border-color: #bfd3ea;
+                text-decoration: none;
+                color: #17406e;
+            }
+
+            .station-pagination__link.is-active {
+                background: #17406e;
+                color: #fff;
+                border-color: #17406e;
+                box-shadow: 0 10px 20px rgba(23, 64, 110, .18);
+            }
+
+            .station-pagination__link.is-disabled {
+                pointer-events: none;
+                opacity: .45;
+                background: #f7f9fc;
+            }
+
+        @@media (max-width: 1399.98px) {
+            .station-list-overview {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .station-request-summary {
+                grid-template-columns: 1fr;
+            }
+
+            .station-request-status {
+                align-items: flex-start;
+            }
+        }
+
+        @@media (max-width: 991.98px) {
+            .station-request-panel__header,
+            .station-request-details__grid {
+                grid-template-columns: 1fr;
+                display: grid;
+            }
+
+            .station-request-panel__stats {
+                justify-content: flex-start;
+            }
+
+            .station-request-info-grid,
+            .station-request-actions__btns {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @@media (max-width: 767.98px) {
+            .station-list-overview {
+                grid-template-columns: 1fr;
+            }
+
+            .station-request-summary,
+            .station-request-details,
+            .station-request-panel__body,
+            .station-request-panel__header {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+
+            .station-request-main {
+                flex-direction: column;
+            }
+
+            .station-request-index {
+                width: 42px;
+                height: 42px;
+            }
+        }
+    </style>
+}
+
+<div class="station-admin-shell station-request-shell">
+    @* <div class="station-approve-card station-admin-hero mb-0">
+        <div class="card-body">
+            <div class="station-admin-hero__wrap">
+                <div>
+                    <div class="station-admin-eyebrow">
+                        <i class="fas fa-shield-alt"></i>
+                        Khu vực admin
+                    </div>
+                    <h1 class="station-page-title mb-2">
+                        <i class="fas fa-clipboard-check me-2"></i>
+                        Xác nhận trạm sạc
+                    </h1>
+                    <p class="station-page-subtitle mb-0">
+                        Chuyển toàn bộ duyệt hồ sơ sang dạng danh sách để bao quát hơn, xem nhanh từng yêu cầu, mở chi tiết ngay trên từng dòng và xử lý theo từng trang.
+                    </p>
+                </div>
+
+                <div class="station-admin-hero__actions">
+                    <div class="station-chip-warning">
+                        <i class="far fa-clock"></i>
+                        @Model.PendingRegistrations hồ sơ chờ duyệt
+                    </div>
+                    <div class="station-chip-soft">
+                        <i class="fas fa-tools"></i>
+                        @Model.PendingOperations yêu cầu vận hành
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["AdminStationRequestSuccess"] != null)
+    {
+        <div class="station-alert success">
+            <i class="far fa-check-circle me-2"></i>
+            @TempData["AdminStationRequestSuccess"]
+        </div>
+    }
+
+    @if (TempData["AdminStationRequestError"] != null)
+    {
+        <div class="station-alert error">
+            <i class="fas fa-triangle-exclamation me-2"></i>
+            @TempData["AdminStationRequestError"]
+        </div>
+    } *@
+
+    <div class="station-list-overview">
+        <div class="station-list-overview__card">
+            <div class="station-list-overview__icon"><i class="far fa-clock"></i></div>
+            <div>
+                <div class="station-list-overview__label">Chờ duyệt thêm trạm</div>
+                <div class="station-list-overview__value">@Model.PendingRegistrations</div>
+                @* <div class="station-list-overview__hint">Hồ sơ user gửi mới</div> *@
+            </div>
+        </div>
+
+        <div class="station-list-overview__card">
+            <div class="station-list-overview__icon"><i class="fas fa-tasks"></i></div>
+            <div>
+                <div class="station-list-overview__label">Chờ duyệt vận hành</div>
+                <div class="station-list-overview__value">@Model.PendingOperations</div>
+                @* <div class="station-list-overview__hint">Yêu cầu đổi trạng thái / trụ</div> *@
+            </div>
+        </div>
+
+        <div class="station-list-overview__card">
+            <div class="station-list-overview__icon"><i class="far fa-check-circle"></i></div>
+            <div>
+                <div class="station-list-overview__label">Đã duyệt</div>
+                <div class="station-list-overview__value">@Model.ApprovedCount</div>
+                @* <div class="station-list-overview__hint">Bao gồm hồ sơ hoàn tất</div> *@
+            </div>
+        </div>
+
+        <div class="station-list-overview__card">
+            <div class="station-list-overview__icon"><i class="fas fa-ban"></i></div>
+            <div>
+                <div class="station-list-overview__label">Đã từ chối</div>
+                <div class="station-list-overview__value">@Model.RejectedCount</div>
+                @* <div class="station-list-overview__hint">Các yêu cầu không đạt điều kiện</div> *@
+            </div>
+        </div>
+    </div>
+
+    <div class="station-admin-tabs" id="stationAdminTabs">
+        <button type="button"
+                class="station-admin-tabs__item @(Model.ActiveTab == "registration" ? "active" : string.Empty)"
+                data-admin-tab-target="station-admin-tab-registration">
+            <i class="fas fa-charging-station mr-2"></i>
+            <span>Duyệt trạm sạc</span>
+        </button>
+
+        <button type="button"
+                class="station-admin-tabs__item @(Model.ActiveTab == "operation" ? "active" : string.Empty)"
+                data-admin-tab-target="station-admin-tab-operation">
+            <i class="fas fa-tools mr-2"></i>
+            <span>Yêu cầu vận hành</span>
+        </button>
+    </div>
+
+    <div class="station-admin-tab-panels">
+        <div id="station-admin-tab-registration" class="station-admin-tab-panel @(Model.ActiveTab == "registration" ? "active" : string.Empty)">
+            <div class="station-request-panel">
+                <div class="station-request-panel__header">
+                    <div class="station-request-panel__title">
+                        <div class="station-request-panel__title-icon"><i class="fas fa-charging-station"></i></div>
+                        <div>
+                            <h3>Duyệt yêu cầu thêm trạm</h3>
+                            @* <p class="station-request-panel__desc">
+                                Danh sách hiển thị gọn theo từng dòng để admin nhìn được nhiều hồ sơ hơn trên một màn hình. Bấm vào từng dòng để mở phần chi tiết, ghi chú và thao tác duyệt / từ chối.
+                            </p> *@
+                        </div>
+                    </div>
+
+                    <div class="station-request-panel__stats">
+                        <div class="station-request-count"><i class="fas fa-layer-group"></i>Tổng @Model.RegistrationTotalCount hồ sơ</div>
+                        <div class="station-request-count"><i class="fas fa-file-alt"></i>Trang @Model.RegistrationPage / @Model.RegistrationTotalPages</div>
+                    </div>
+                </div>
+
+                <div class="station-request-panel__body">
+                    @if (!Model.RegistrationItems.Any())
+                    {
+                        <div class="station-admin-empty">
+                            <i class="far fa-folder-open me-2"></i>
+                            <span>Chưa có yêu cầu thêm trạm nào.</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="station-request-list">
+                            @for (var i = 0; i < Model.RegistrationItems.Count; i++)
+                            {
+                                var request = Model.RegistrationItems[i];
+                                var rowNumber = ((Model.RegistrationPage - 1) * Model.RegistrationPageSize) + i + 1;
+                                var badgeClass = GetStatusClass(request.ApprovalStatus);
+                                var isPending = request.ApprovalStatus == StationWorkflowStatus.Pending;
+                                var displayName = request.User?.FullName ?? request.User?.Username ?? "-";
+
+                                <details class="station-request-item" @(i == 0 ? "open" : null)>
+                                    <summary class="station-request-summary">
+                                        <div class="station-request-main">
+                                            <div class="station-request-index">@rowNumber</div>
+                                            <div>
+                                                <h4>@request.StationName</h4>
+                                                <div class="station-request-subline">
+                                                    <span><i class="far fa-user"></i>@displayName</span>
+                                                    <span><i class="far fa-envelope"></i>@(request.User?.Email ?? request.ContactEmail ?? "-")</span>
+                                                    <span><i class="fas fa-map-marker-alt"></i>@request.Address</span>
+                                                </div>
+                                                <div class="station-request-pill-group">
+                                                    <span class="station-request-pill"><i class="fas fa-building"></i>@request.OperatorName</span>
+                                                    <span class="station-request-pill"><i class="fas fa-plug"></i>@request.InitialPoleCount trụ</span>
+                                                    <span class="station-request-pill"><i class="fas fa-bolt"></i>@(string.IsNullOrWhiteSpace(request.InitialPoleChargerType) ? "Chưa chọn loại sạc" : request.InitialPoleChargerType)</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="station-request-col">
+                                            <div class="station-request-col__label"><i class="fas fa-phone"></i>Liên hệ</div>
+                                            <div class="station-request-col__value">@request.ContactPhone</div>
+                                            <div class="station-request-col__sub">
+                                                <i class="far fa-envelope me-1"></i>@request.ContactEmail
+                                            </div>
+                                        </div>
+
+                                        <div class="station-request-col">
+                                            <div class="station-request-col__label"><i class="fas fa-wallet"></i>Thanh toán & phí</div>
+                                            <div class="station-request-col__value">@request.FeeAmount.ToString("N0") VND</div>
+                                            <div class="station-request-col__sub">
+                                                <i class="far fa-calendar me-1"></i>@request.PaymentStatus · @request.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                                            </div>
+                                        </div>
+
+                                        <div class="station-request-status">
+                                            <span class="@badgeClass"><i class="@GetStatusIcon(request.ApprovalStatus)"></i>@request.ApprovalStatus</span>
+                                            <span class="station-chip-soft"><i class="@GetPaymentIcon(request.PaymentStatus)"></i>@request.PaymentStatus</span>
+                                            <span class="station-request-chevron"><i class="fas fa-chevron-down"></i></span>
+                                        </div>
+                                    </summary>
+
+                                    <div class="station-request-details">
+                                        <div class="station-request-details__grid">
+                                            <div class="station-request-card">
+                                                <h5 class="station-request-card__title"><i class="fas fa-info-circle"></i>Thông tin hồ sơ</h5>
+                                                <div class="station-request-info-grid">
+                                                    <div class="station-request-info-item">
+                                                        <div class="station-request-info-item__label"><i class="far fa-user"></i>Người gửi</div>
+                                                        <div class="station-request-info-item__value">@displayName</div>
+                                                    </div>
+                                                    <div class="station-request-info-item">
+                                                        <div class="station-request-info-item__label"><i class="far fa-envelope"></i>Email tài khoản</div>
+                                                        <div class="station-request-info-item__value">@(request.User?.Email ?? "-")</div>
+                                                    </div>
+                                                    <div class="station-request-info-item">
+                                                        <div class="station-request-info-item__label"><i class="fas fa-phone"></i>Số điện thoại</div>
+                                                        <div class="station-request-info-item__value">@request.ContactPhone</div>
+                                                    </div>
+                                                    <div class="station-request-info-item">
+                                                        <div class="station-request-info-item__label"><i class="far fa-clock"></i>Thời gian gửi</div>
+                                                        <div class="station-request-info-item__value">@request.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                                                    </div>
+                                                    <div class="station-request-info-item">
+                                                        <div class="station-request-info-item__label"><i class="fas fa-bolt"></i>Loại sạc dự kiến</div>
+                                                        <div class="station-request-info-item__value">@(string.IsNullOrWhiteSpace(request.InitialPoleChargerType) ? "-" : request.InitialPoleChargerType)</div>
+                                                    </div>
+                                                    <div class="station-request-info-item">
+                                                        <div class="station-request-info-item__label"><i class="fas fa-gauge-high"></i>Công suất dự kiến</div>
+                                                        <div class="station-request-info-item__value">@(string.IsNullOrWhiteSpace(request.InitialPoleMaxPower) ? "-" : request.InitialPoleMaxPower)</div>
+                                                    </div>
+                                                    <div class="station-request-info-item">
+                                                        <div class="station-request-info-item__label"><i class="fas fa-plug"></i>Số trụ dự kiến</div>
+                                                        <div class="station-request-info-item__value">@request.InitialPoleCount</div>
+                                                    </div>
+                                                    <div class="station-request-info-item">
+                                                        <div class="station-request-info-item__label"><i class="fas fa-crosshairs"></i>Vị trí</div>
+                                                        <div class="station-request-info-item__value">@request.Latitude.ToString("0.######"), @request.Longitude.ToString("0.######")</div>
+                                                    </div>
+                                                </div>
+
+                                                @if (!string.IsNullOrWhiteSpace(request.Description))
+                                                {
+                                                    <div class="station-request-note user-note">
+                                                        <strong><i class="far fa-clipboard"></i>Mô tả trạm:</strong>
+                                                        @request.Description
+                                                    </div>
+                                                }
+
+                                                @if (!string.IsNullOrWhiteSpace(request.InitialPoleNote))
+                                                {
+                                                    <div class="station-request-note user-note">
+                                                        <strong><i class="far fa-sticky-note"></i>Ghi chú trụ ban đầu:</strong>
+                                                        @request.InitialPoleNote
+                                                    </div>
+                                                }
+
+                                                @if (!string.IsNullOrWhiteSpace(request.AdminNote))
+                                                {
+                                                    <div class="station-request-note admin-note">
+                                                        <strong><i class="fas fa-shield"></i>Ghi chú admin:</strong>
+                                                        @request.AdminNote
+                                                    </div>
+                                                }
+
+                                                <div class="station-request-links">
+                                                    <a class="station-request-link"
+                                                       href="@($"https://www.google.com/maps?q={request.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)},{request.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}")"
+                                                       target="_blank"
+                                                       rel="noopener noreferrer">
+                                                        <i class="fas fa-map-marked-alt"></i>
+                                                        Mở vị trí bản đồ
+                                                    </a>
+
+                                                    @if (!string.IsNullOrWhiteSpace(request.ImageUrl))
+                                                    {
+                                                        <a class="station-request-link" href="@request.ImageUrl" target="_blank" rel="noopener noreferrer">
+                                                            <i class="far fa-image"></i>
+                                                            Xem ảnh hồ sơ
+                                                        </a>
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            <div class="station-request-card">
+                                                <h5 class="station-request-card__title"><i class="fas fa-tasks"></i>Thao tác duyệt</h5>
+                                                <p class="station-request-actions__hint">
+                                                    <i class="fas fa-info-circle me-1"></i>
+                                                    Duyệt để user tiếp tục thanh toán PayOS, hoặc nhập lý do từ chối ngay trong dòng hồ sơ này.
+                                                </p>
+
+                                                @if (isPending)
+                                                {
+                                                    <div class="station-request-actions">
+                                                        <div class="station-request-actions__btns">
+                                                            <form asp-area="Admin" asp-controller="StationRequest" asp-action="ApproveRegistration" method="post">
+                                                                @Html.AntiForgeryToken()
+                                                                <input type="hidden" name="id" value="@request.Id" />
+                                                                <input type="hidden" name="registrationPage" value="@Model.RegistrationPage" />
+                                                                <input type="hidden" name="operationPage" value="@Model.OperationPage" />
+                                                                <input type="hidden" name="tab" value="registration" />
+                                                                <button type="submit" class="station-btn w-100">
+                                                                    <i class="fas fa-check"></i>
+                                                                    Duyệt hồ sơ
+                                                                </button>
+                                                            </form>
+
+                                                            <form asp-area="Admin" asp-controller="StationRequest" asp-action="RejectRegistration" method="post">
+                                                                @Html.AntiForgeryToken()
+                                                                <input type="hidden" name="id" value="@request.Id" />
+                                                                <input type="hidden" name="registrationPage" value="@Model.RegistrationPage" />
+                                                                <input type="hidden" name="operationPage" value="@Model.OperationPage" />
+                                                                <input type="hidden" name="tab" value="registration" />
+                                                                <textarea name="adminNote" class="station-textarea station-request-textarea" placeholder="Nhập lý do từ chối..."></textarea>
+                                                                <button type="submit" class="station-btn-danger w-100 mt-2">
+                                                                    <i class="fas fa-xmark"></i>
+                                                                    Từ chối hồ sơ
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="station-request-readonly">
+                                                        <i class="fas fa-lock mr-2"></i>
+                                                        Hồ sơ này đã được xử lý. Bạn vẫn có thể xem lại đầy đủ thông tin và ghi chú ở cột bên trái.
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </details>
+                            }
+                        </div>
+
+                        @if (Model.RegistrationTotalPages > 1)
+                        {
+                            var fromItem = ((Model.RegistrationPage - 1) * Model.RegistrationPageSize) + 1;
+                            var toItem = Math.Min(Model.RegistrationPage * Model.RegistrationPageSize, Model.RegistrationTotalCount);
+
+                            <div class="station-pagination-wrap">
+                                <div class="station-pagination-summary">
+                                    <i class="fas fa-list-ol me-1"></i>
+                                    Hiển thị <strong>@fromItem</strong> - <strong>@toItem</strong> trên <strong>@Model.RegistrationTotalCount</strong> hồ sơ đăng ký trạm.
+                                </div>
+
+                                <div class="station-pagination">
+                                    <a class="station-pagination__link @(Model.RegistrationPage <= 1 ? "is-disabled" : string.Empty)"
+                                       asp-area="Admin"
+                                       asp-controller="StationRequest"
+                                       asp-action="Index"
+                                       asp-route-registrationPage="1"
+                                       asp-route-operationPage="@Model.OperationPage"
+                                       asp-route-tab="registration">
+                                        <i class="fas fa-angles-left"></i>
+                                    </a>
+
+                                    <a class="station-pagination__link @(Model.RegistrationPage <= 1 ? "is-disabled" : string.Empty)"
+                                       asp-area="Admin"
+                                       asp-controller="StationRequest"
+                                       asp-action="Index"
+                                       asp-route-registrationPage="@(Model.RegistrationPage - 1)"
+                                       asp-route-operationPage="@Model.OperationPage"
+                                       asp-route-tab="registration">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </a>
+
+                                    @for (var pageNumber = 1; pageNumber <= Model.RegistrationTotalPages; pageNumber++)
+                                    {
+                                        <a class="station-pagination__link @(pageNumber == Model.RegistrationPage ? "is-active" : string.Empty)"
+                                           asp-area="Admin"
+                                           asp-controller="StationRequest"
+                                           asp-action="Index"
+                                           asp-route-registrationPage="@pageNumber"
+                                           asp-route-operationPage="@Model.OperationPage"
+                                           asp-route-tab="registration">@pageNumber</a>
+                                    }
+
+                                    <a class="station-pagination__link @(Model.RegistrationPage >= Model.RegistrationTotalPages ? "is-disabled" : string.Empty)"
+                                       asp-area="Admin"
+                                       asp-controller="StationRequest"
+                                       asp-action="Index"
+                                       asp-route-registrationPage="@(Model.RegistrationPage + 1)"
+                                       asp-route-operationPage="@Model.OperationPage"
+                                       asp-route-tab="registration">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </a>
+
+                                    <a class="station-pagination__link @(Model.RegistrationPage >= Model.RegistrationTotalPages ? "is-disabled" : string.Empty)"
+                                       asp-area="Admin"
+                                       asp-controller="StationRequest"
+                                       asp-action="Index"
+                                       asp-route-registrationPage="@Model.RegistrationTotalPages"
+                                       asp-route-operationPage="@Model.OperationPage"
+                                       asp-route-tab="registration">
+                                        <i class="fas fa-angles-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div id="station-admin-tab-operation" class="station-admin-tab-panel @(Model.ActiveTab == "operation" ? "active" : string.Empty)">
+            <div class="station-request-panel">
+                <div class="station-request-panel__header">
+                    <div class="station-request-panel__title">
+                        <div class="station-request-panel__title-icon"><i class="fas fa-tools"></i></div>
+                        <div>
+                            <h3>Duyệt yêu cầu vận hành</h3>
+                            @* <p class="station-request-panel__desc">
+                                Gom toàn bộ thay đổi trạng thái, thêm trụ, cập nhật trụ và xóa trụ vào cùng một danh sách có icon phân loại rõ ràng để admin xử lý nhanh hơn.
+                            </p> *@
+                        </div>
+                    </div>
+
+                    <div class="station-request-panel__stats">
+                        <div class="station-request-count"><i class="fas fa-layer-group"></i>Tổng @Model.OperationTotalCount yêu cầu</div>
+                        <div class="station-request-count"><i class="fas fa-file-alt"></i>Trang @Model.OperationPage / @Model.OperationTotalPages</div>
+                    </div>
+                </div>
+
+                <div class="station-request-panel__body">
+                    @if (!Model.OperationItems.Any())
+                    {
+                        <div class="station-admin-empty">
+                            <i class="far fa-folder-open me-2"></i>
+                            <span>Chưa có yêu cầu vận hành nào.</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="station-request-list">
+                            @for (var i = 0; i < Model.OperationItems.Count; i++)
+                            {
+                                var request = Model.OperationItems[i];
+                                var rowNumber = ((Model.OperationPage - 1) * Model.OperationPageSize) + i + 1;
+                                var badgeClass = GetStatusClass(request.Status);
+                                var displayName = request.User?.FullName ?? request.User?.Username ?? "-";
+                                var requestType = request.RequestType ?? StationOperationRequestType.StatusUpdate;
+                                var requestTypeClass = GetTypeChipClass(requestType);
+                                var isStatusUpdate = requestType == StationOperationRequestType.StatusUpdate;
+                                var isAddPole = requestType == StationOperationRequestType.AddPole;
+                                var isUpdatePole = requestType == StationOperationRequestType.UpdatePole;
+                                var isDeletePole = requestType == StationOperationRequestType.DeletePole;
+                                var isPending = request.Status == StationWorkflowStatus.Pending;
+
+                                <details class="station-request-item" @(i == 0 ? "open" : null)>
+                                    <summary class="station-request-summary">
+                                        <div class="station-request-main">
+                                            <div class="station-request-index">@rowNumber</div>
+                                            <div>
+                                                <h4>@(request.Station?.Name ?? $"Trạm #{request.StationId}")</h4>
+                                                <div class="station-request-subline">
+                                                    <span><i class="far fa-user"></i>@displayName</span>
+                                                    <span><i class="far fa-envelope"></i>@(request.User?.Email ?? "-")</span>
+                                                    <span><i class="fas fa-map-marker-alt"></i>@(request.Station?.Address ?? "-")</span>
+                                                </div>
+                                                <div class="station-request-pill-group">
+                                                    <span class="@requestTypeClass"><i class="@GetTypeIcon(requestType)"></i>@requestType</span>
+                                                    @if (isStatusUpdate)
+                                                    {
+                                                        <span class="station-request-pill"><i class="fas fa-signal"></i>Trạng thái đề xuất: @(request.RequestedStationStatus ?? "-")</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="station-request-pill"><i class="fas fa-plug"></i>Mã trụ: @(string.IsNullOrWhiteSpace(request.PoleCode) ? "-" : request.PoleCode)</span>
+                                                        <span class="station-request-pill"><i class="fas fa-bolt"></i>Công suất: @(string.IsNullOrWhiteSpace(request.PoleMaxPower) ? "-" : request.PoleMaxPower)</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="station-request-col">
+                                            <div class="station-request-col__label"><i class="fas fa-list"></i>Phân loại</div>
+                                            <div class="station-request-col__value">@requestType</div>
+                                            <div class="station-request-col__sub">
+                                                <i class="fas fa-hashtag me-1"></i>Mã yêu cầu #@request.Id
+                                            </div>
+                                        </div>
+
+                                        <div class="station-request-col">
+                                            <div class="station-request-col__label"><i class="far fa-calendar"></i>Thời gian</div>
+                                            <div class="station-request-col__value">@request.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                                            <div class="station-request-col__sub">
+                                                <i class="far fa-eye me-1"></i>
+                                                @(request.ReviewedAt.HasValue ? $"Đã xem lúc {request.ReviewedAt.Value:dd/MM/yyyy HH:mm}" : "Chưa review")
+                                            </div>
+                                        </div>
+
+                                        <div class="station-request-status">
+                                            <span class="@badgeClass"><i class="@GetStatusIcon(request.Status)"></i>@request.Status</span>
+                                            @if (isStatusUpdate)
+                                            {
+                                                <span class="@GetRequestedStatusClass(request.RequestedStationStatus)"><i class="fas fa-sync-alt"></i>@(request.RequestedStationStatus ?? "-")</span>
+                                            }
+                                            else if (isUpdatePole || isDeletePole)
+                                            {
+                                                <span class="@GetRequestedStatusClass(request.RequestedPoleStatus)"><i class="fas fa-sync-alt"></i>@(request.RequestedPoleStatus ?? "-")</span>
+                                            }
+                                            <span class="station-request-chevron"><i class="fas fa-chevron-down"></i></span>
+                                        </div>
+                                    </summary>
+
+                                    <div class="station-request-details">
+                                        <div class="station-request-details__grid">
+                                            <div class="station-request-card">
+                                                <h5 class="station-request-card__title"><i class="fas fa-sliders"></i>Chi tiết yêu cầu</h5>
+                                                <div class="station-request-info-grid">
+                                                    <div class="station-request-info-item">
+                                                        <div class="station-request-info-item__label"><i class="@GetTypeIcon(requestType)"></i>Loại yêu cầu</div>
+                                                        <div class="station-request-info-item__value">@requestType</div>
+                                                    </div>
+                                                    <div class="station-request-info-item">
+                                                        <div class="station-request-info-item__label"><i class="far fa-user"></i>Người gửi</div>
+                                                        <div class="station-request-info-item__value">@displayName</div>
+                                                    </div>
+                                                    <div class="station-request-info-item">
+                                                        <div class="station-request-info-item__label"><i class="far fa-envelope"></i>Email</div>
+                                                        <div class="station-request-info-item__value">@(request.User?.Email ?? "-")</div>
+                                                    </div>
+                                                    <div class="station-request-info-item">
+                                                        <div class="station-request-info-item__label"><i class="fas fa-charging-station"></i>Trạm</div>
+                                                        <div class="station-request-info-item__value">@(request.Station?.Name ?? $"Trạm #{request.StationId}")</div>
+                                                    </div>
+                                                    @if (isStatusUpdate)
+                                                    {
+                                                        <div class="station-request-info-item">
+                                                            <div class="station-request-info-item__label"><i class="fas fa-signal"></i>Trạng thái đề xuất</div>
+                                                            <div class="station-request-info-item__value">@(request.RequestedStationStatus ?? "-")</div>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="station-request-info-item">
+                                                            <div class="station-request-info-item__label"><i class="fas fa-hashtag"></i>Mã trụ</div>
+                                                            <div class="station-request-info-item__value">@(string.IsNullOrWhiteSpace(request.PoleCode) ? "-" : request.PoleCode)</div>
+                                                        </div>
+                                                        <div class="station-request-info-item">
+                                                            <div class="station-request-info-item__label"><i class="fas fa-gauge-high"></i>Công suất</div>
+                                                            <div class="station-request-info-item__value">@(string.IsNullOrWhiteSpace(request.PoleMaxPower) ? "-" : request.PoleMaxPower)</div>
+                                                        </div>
+                                                        @if (isUpdatePole || isDeletePole)
+                                                        {
+                                                            <div class="station-request-info-item">
+                                                                <div class="station-request-info-item__label"><i class="fas fa-plug"></i>Trạng thái trụ đề xuất</div>
+                                                                <div class="station-request-info-item__value">@(request.RequestedPoleStatus ?? "-")</div>
+                                                            </div>
+                                                        }
+                                                    }
+                                                    <div class="station-request-info-item">
+                                                        <div class="station-request-info-item__label"><i class="far fa-clock"></i>Thời gian gửi</div>
+                                                        <div class="station-request-info-item__value">@request.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                                                    </div>
+                                                </div>
+
+                                                @if (!string.IsNullOrWhiteSpace(request.UserNote))
+                                                {
+                                                    <div class="station-request-note user-note">
+                                                        <strong><i class="far fa-sticky-note"></i>Ghi chú user:</strong>
+                                                        @request.UserNote
+                                                    </div>
+                                                }
+
+                                                @if (!string.IsNullOrWhiteSpace(request.AdminNote))
+                                                {
+                                                    <div class="station-request-note admin-note">
+                                                        <strong><i class="fas fa-shield"></i>Ghi chú admin:</strong>
+                                                        @request.AdminNote
+                                                    </div>
+                                                }
+                                            </div>
+
+                                            <div class="station-request-card">
+                                                <h5 class="station-request-card__title"><i class="fas fa-tasks"></i>Thao tác duyệt</h5>
+                                                <p class="station-request-actions__hint">
+                                                    <i class="fas fa-info-circle me-1"></i>
+                                                    Duyệt để áp dụng thay đổi vào trạm, hoặc nhập lý do từ chối ngay tại đây. Mỗi loại yêu cầu đều có icon riêng để tránh nhầm thao tác.
+                                                </p>
+
+                                                @if (isPending)
+                                                {
+                                                    <div class="station-request-actions">
+                                                        <div class="station-request-actions__btns">
+                                                            <form asp-area="Admin" asp-controller="StationRequest" asp-action="ApproveOperation" method="post">
+                                                                @Html.AntiForgeryToken()
+                                                                <input type="hidden" name="id" value="@request.Id" />
+                                                                <input type="hidden" name="registrationPage" value="@Model.RegistrationPage" />
+                                                                <input type="hidden" name="operationPage" value="@Model.OperationPage" />
+                                                                <input type="hidden" name="tab" value="operation" />
+                                                                <button type="submit" class="station-btn w-100">
+                                                                    <i class="fas fa-check"></i>
+                                                                    Duyệt yêu cầu
+                                                                </button>
+                                                            </form>
+
+                                                            <form asp-area="Admin" asp-controller="StationRequest" asp-action="RejectOperation" method="post">
+                                                                @Html.AntiForgeryToken()
+                                                                <input type="hidden" name="id" value="@request.Id" />
+                                                                <input type="hidden" name="registrationPage" value="@Model.RegistrationPage" />
+                                                                <input type="hidden" name="operationPage" value="@Model.OperationPage" />
+                                                                <input type="hidden" name="tab" value="operation" />
+                                                                <textarea name="adminNote" class="station-textarea station-request-textarea" placeholder="Nhập lý do từ chối..."></textarea>
+                                                                <button type="submit" class="station-btn-danger w-100 mt-2">
+                                                                    <i class="fas fa-xmark"></i>
+                                                                    Từ chối yêu cầu
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="station-request-readonly">
+                                                        <i class="fas fa-lock mr-2"></i>
+                                                        Yêu cầu này đã được xử lý. Bạn có thể mở từng dòng để kiểm tra lại toàn bộ log và ghi chú.
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </details>
+                            }
+                        </div>
+
+                        @if (Model.OperationTotalPages > 1)
+                        {
+                            var fromItem = ((Model.OperationPage - 1) * Model.OperationPageSize) + 1;
+                            var toItem = Math.Min(Model.OperationPage * Model.OperationPageSize, Model.OperationTotalCount);
+
+                            <div class="station-pagination-wrap">
+                                <div class="station-pagination-summary">
+                                    <i class="fas fa-list-ol me-1"></i>
+                                    Hiển thị <strong>@fromItem</strong> - <strong>@toItem</strong> trên <strong>@Model.OperationTotalCount</strong> yêu cầu vận hành.
+                                </div>
+
+                                <div class="station-pagination">
+                                    <a class="station-pagination__link @(Model.OperationPage <= 1 ? "is-disabled" : string.Empty)"
+                                       asp-area="Admin"
+                                       asp-controller="StationRequest"
+                                       asp-action="Index"
+                                       asp-route-registrationPage="@Model.RegistrationPage"
+                                       asp-route-operationPage="1"
+                                       asp-route-tab="operation">
+                                        <i class="fas fa-angles-left"></i>
+                                    </a>
+
+                                    <a class="station-pagination__link @(Model.OperationPage <= 1 ? "is-disabled" : string.Empty)"
+                                       asp-area="Admin"
+                                       asp-controller="StationRequest"
+                                       asp-action="Index"
+                                       asp-route-registrationPage="@Model.RegistrationPage"
+                                       asp-route-operationPage="@(Model.OperationPage - 1)"
+                                       asp-route-tab="operation">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </a>
+
+                                    @for (var pageNumber = 1; pageNumber <= Model.OperationTotalPages; pageNumber++)
+                                    {
+                                        <a class="station-pagination__link @(pageNumber == Model.OperationPage ? "is-active" : string.Empty)"
+                                           asp-area="Admin"
+                                           asp-controller="StationRequest"
+                                           asp-action="Index"
+                                           asp-route-registrationPage="@Model.RegistrationPage"
+                                           asp-route-operationPage="@pageNumber"
+                                           asp-route-tab="operation">@pageNumber</a>
+                                    }
+
+                                    <a class="station-pagination__link @(Model.OperationPage >= Model.OperationTotalPages ? "is-disabled" : string.Empty)"
+                                       asp-area="Admin"
+                                       asp-controller="StationRequest"
+                                       asp-action="Index"
+                                       asp-route-registrationPage="@Model.RegistrationPage"
+                                       asp-route-operationPage="@(Model.OperationPage + 1)"
+                                       asp-route-tab="operation">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </a>
+
+                                    <a class="station-pagination__link @(Model.OperationPage >= Model.OperationTotalPages ? "is-disabled" : string.Empty)"
+                                       asp-area="Admin"
+                                       asp-controller="StationRequest"
+                                       asp-action="Index"
+                                       asp-route-registrationPage="@Model.RegistrationPage"
+                                       asp-route-operationPage="@Model.OperationTotalPages"
+                                       asp-route-tab="operation">
+                                        <i class="fas fa-angles-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const tabButtons = Array.from(document.querySelectorAll('.station-admin-tabs__item'));
+            const panels = Array.from(document.querySelectorAll('.station-admin-tab-panel'));
+            const initialTargetId = '@(Model.ActiveTab == "operation" ? "station-admin-tab-operation" : "station-admin-tab-registration")';
+
+            function activateAdminTab(targetId) {
+                tabButtons.forEach(btn => {
+                    btn.classList.toggle('active', btn.getAttribute('data-admin-tab-target') === targetId);
+                });
+
+                panels.forEach(panel => {
+                    panel.classList.toggle('active', panel.id === targetId);
+                });
+            }
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    const targetId = this.getAttribute('data-admin-tab-target');
+                    if (!targetId) return;
+                    activateAdminTab(targetId);
+                });
+            });
+
+            activateAdminTab(initialTargetId);
+        })();
+    </script>
+}
