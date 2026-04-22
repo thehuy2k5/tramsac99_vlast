@@ -2060,12 +2060,14 @@ body.user-site-shell .user-header {
         font-size: 13.5px;
     }
 }
+
+
 html {
-    scroll-padding-top: 92px;
+    scroll-padding-top: 64px;
 }
 
 body.user-site-shell {
-    padding-top: 78px !important;
+    padding-top: 52px !important;
 }
 
     body.user-site-shell .user-header-shell,
@@ -2090,11 +2092,11 @@ body.user-site-shell {
         margin: 0 !important;
         padding: 0 !important;
         z-index: 3000 !important;
-        background: rgba(255, 255, 255, 0.96) !important;
-        border-bottom: 1px solid rgba(18, 78, 51, 0.08) !important;
-        box-shadow: 0 10px 28px rgba(15, 32, 22, 0.06) !important;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
+        background: rgba(255, 255, 255, 0.90) !important;
+        border-bottom: 1px solid rgba(18, 78, 51, 0.07) !important;
+        box-shadow: 0 6px 18px rgba(15, 32, 22, 0.04) !important;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
     }
 
         body.user-site-shell header.user-header::before,
@@ -2118,12 +2120,12 @@ body.user-site-shell {
         body.user-site-shell .user-header .user-navbar,
         body.user-site-shell .user-header .navbar {
             position: relative !important;
-            min-height: 78px !important;
-            height: 78px !important;
+            min-height: 64px !important;
+            height: 64px !important;
             display: grid !important;
             grid-template-columns: auto 1fr !important;
             align-items: center !important;
-            column-gap: 28px !important;
+            column-gap: 24px !important;
             padding: 0 !important;
             margin: 0 !important;
             background: transparent !important;
@@ -2154,7 +2156,7 @@ body.user-site-shell {
             body.user-site-shell .user-header #site-logo {
                 display: block !important;
                 width: auto !important;
-                max-height: 40px !important;
+                max-height: 32px !important;
                 object-fit: contain !important;
             }
 
@@ -2164,7 +2166,7 @@ body.user-site-shell {
             display: flex !important;
             align-items: center !important;
             justify-content: flex-end !important;
-            gap: 18px !important;
+            gap: 14px !important;
             min-width: 0 !important;
             padding: 0 !important;
             margin: 0 !important;
@@ -2180,9 +2182,9 @@ body.user-site-shell {
             align-items: center !important;
             justify-content: center !important;
             flex-wrap: nowrap !important;
-            gap: 10px 30px !important;
+            gap: 8px 24px !important;
             width: max-content !important;
-            max-width: calc(100% - 430px) !important;
+            max-width: calc(100% - 390px) !important;
             margin: 0 !important;
             padding: 0 !important;
             list-style: none !important;
@@ -2201,13 +2203,13 @@ body.user-site-shell {
                 align-items: center !important;
                 justify-content: center !important;
                 gap: 6px !important;
-                padding: 8px 2px 11px !important;
+                padding: 6px 2px 9px !important;
                 color: #1f342b !important;
                 -webkit-text-fill-color: #1f342b !important;
-                font-size: 15px !important;
+                font-size: 14px !important;
                 font-weight: 700 !important;
                 letter-spacing: -0.01em !important;
-                line-height: 1.2 !important;
+                line-height: 1.15 !important;
                 white-space: nowrap !important;
                 text-decoration: none !important;
                 transition: color 0.18s ease !important;
@@ -2246,7 +2248,7 @@ body.user-site-shell {
             display: inline-flex !important;
             align-items: center !important;
             justify-content: flex-end !important;
-            gap: 12px !important;
+            gap: 10px !important;
             margin: 0 0 0 auto !important;
             padding: 0 !important;
             flex: 0 0 auto !important;
@@ -2271,8 +2273,8 @@ body.user-site-shell {
         body.user-site-shell .user-header .user-menu-trigger {
             appearance: none !important;
             -webkit-appearance: none !important;
-            width: 42px !important;
-            height: 42px !important;
+            width: 36px !important;
+            height: 36px !important;
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -2281,7 +2283,7 @@ body.user-site-shell {
             border-radius: 999px !important;
             background: #f8fcfa !important;
             color: #156b46 !important;
-            box-shadow: 0 4px 14px rgba(17, 67, 43, 0.06) !important;
+            box-shadow: 0 4px 10px rgba(17, 67, 43, 0.04) !important;
             cursor: pointer !important;
             transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease !important;
         }
@@ -2291,14 +2293,14 @@ body.user-site-shell {
                 border-color: #cce3d7 !important;
                 background: #ffffff !important;
                 color: #0f7b49 !important;
-                box-shadow: 0 8px 18px rgba(17, 67, 43, 0.09) !important;
+                box-shadow: 0 6px 14px rgba(17, 67, 43, 0.07) !important;
                 transform: translateY(-1px) !important;
                 outline: none !important;
             }
 
         body.user-site-shell .user-header .user-menu-icon {
-            width: 18px !important;
-            height: 18px !important;
+            width: 16px !important;
+            height: 16px !important;
             display: block !important;
             fill: currentColor !important;
         }
@@ -2330,7 +2332,7 @@ body.user-site-shell {
         body.user-site-shell .user-header .user-menu-item {
             display: flex !important;
             align-items: center !important;
-            min-height: 44px !important;
+            min-height: 42px !important;
             padding: 0 16px !important;
             color: #24332e !important;
             background: #ffffff !important;
@@ -2354,22 +2356,22 @@ body.user-site-shell {
 
         body.user-site-shell .user-header a.user-auth-btn,
         body.user-site-shell .user-header button.user-auth-btn {
-            min-width: 160px !important;
-            height: 44px !important;
-            padding: 0 20px !important;
+            min-width: 136px !important;
+            height: 38px !important;
+            padding: 0 16px !important;
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
-            gap: 10px !important;
+            gap: 8px !important;
             border: 1px solid transparent !important;
             border-radius: 999px !important;
             background: linear-gradient(135deg, #1ab165, #17a35f) !important;
             color: #ffffff !important;
-            font-size: 14px !important;
+            font-size: 13px !important;
             font-weight: 800 !important;
             line-height: 1 !important;
             text-decoration: none !important;
-            box-shadow: 0 10px 24px rgba(22, 160, 95, 0.18) !important;
+            box-shadow: 0 8px 18px rgba(22, 160, 95, 0.14) !important;
             white-space: nowrap !important;
             transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease !important;
         }
@@ -2381,18 +2383,18 @@ body.user-site-shell {
                 color: #ffffff !important;
                 text-decoration: none !important;
                 transform: translateY(-1px) !important;
-                box-shadow: 0 14px 28px rgba(22, 160, 95, 0.22) !important;
+                box-shadow: 0 10px 20px rgba(22, 160, 95, 0.18) !important;
                 filter: saturate(1.03) !important;
                 outline: none !important;
             }
 
         body.user-site-shell .user-header .user-auth-arrow {
-            width: 14px !important;
-            height: 14px !important;
+            width: 13px !important;
+            height: 13px !important;
             display: block !important;
             fill: none !important;
             stroke: currentColor !important;
-            stroke-width: 2.3 !important;
+            stroke-width: 2.2 !important;
             stroke-linecap: round !important;
             stroke-linejoin: round !important;
         }
@@ -2424,18 +2426,18 @@ body.user-site-shell {
     }
 
     body.user-site-shell .user-header .user-nav-list {
-        max-width: calc(100% - 470px) !important;
-        gap: 10px 34px !important;
+        max-width: calc(100% - 430px) !important;
+        gap: 8px 28px !important;
     }
 }
 
 @media (min-width: 992px) and (max-width: 1199.98px) {
     html {
-        scroll-padding-top: 84px;
+        scroll-padding-top: 58px;
     }
 
     body.user-site-shell {
-        padding-top: 72px !important;
+        padding-top: 48px !important;
     }
 
         body.user-site-shell .user-header > .container,
@@ -2444,8 +2446,8 @@ body.user-site-shell {
         }
 
         body.user-site-shell .user-header .user-navbar {
-            min-height: 72px !important;
-            height: 72px !important;
+            min-height: 58px !important;
+            height: 58px !important;
             column-gap: 18px !important;
         }
 
@@ -2453,40 +2455,42 @@ body.user-site-shell {
         body.user-site-shell .user-header .user-brand-logo,
         body.user-site-shell .user-header .navbar-brand img,
         body.user-site-shell .user-header #site-logo {
-            max-height: 36px !important;
+            max-height: 30px !important;
         }
 
         body.user-site-shell .user-header .user-nav-list {
-            max-width: calc(100% - 360px) !important;
-            gap: 8px 18px !important;
+            max-width: calc(100% - 320px) !important;
+            gap: 8px 16px !important;
         }
 
             body.user-site-shell .user-header .user-nav-list .nav-link,
             body.user-site-shell .user-header .user-nav-list .nav-link:visited,
             body.user-site-shell .user-header .user-nav-list .nav-link:focus {
-                font-size: 13.5px !important;
+                font-size: 13px !important;
+                padding: 6px 2px 8px !important;
             }
 
         body.user-site-shell .user-header .user-menu-trigger {
-            width: 40px !important;
-            height: 40px !important;
+            width: 34px !important;
+            height: 34px !important;
         }
 
         body.user-site-shell .user-header a.user-auth-btn,
         body.user-site-shell .user-header button.user-auth-btn {
-            min-width: 146px !important;
-            height: 42px !important;
-            padding: 0 18px !important;
+            min-width: 124px !important;
+            height: 36px !important;
+            padding: 0 14px !important;
+            font-size: 12.5px !important;
         }
 }
 
 @media (max-width: 991.98px) {
     html {
-        scroll-padding-top: 76px;
+        scroll-padding-top: 54px;
     }
 
     body.user-site-shell {
-        padding-top: 66px !important;
+        padding-top: 46px !important;
     }
 
         body.user-site-shell .user-header > .container,
@@ -2497,17 +2501,17 @@ body.user-site-shell {
         body.user-site-shell .user-header .user-navbar,
         body.user-site-shell .user-header .navbar {
             display: flex !important;
-            min-height: 66px !important;
-            height: 66px !important;
-            gap: 12px !important;
-            padding: 10px 0 !important;
+            min-height: 54px !important;
+            height: 54px !important;
+            gap: 10px !important;
+            padding: 8px 0 !important;
         }
 
         body.user-site-shell .user-header .user-brand img,
         body.user-site-shell .user-header .user-brand-logo,
         body.user-site-shell .user-header .navbar-brand img,
         body.user-site-shell .user-header #site-logo {
-            max-height: 32px !important;
+            max-height: 28px !important;
         }
 
         body.user-site-shell .user-header .user-navbar-toggler {
@@ -2518,15 +2522,15 @@ body.user-site-shell {
 
         body.user-site-shell .user-header .user-navbar-collapse {
             position: absolute !important;
-            top: calc(100% + 10px) !important;
+            top: calc(100% + 8px) !important;
             left: 0 !important;
             right: 0 !important;
             display: block !important;
-            padding: 14px !important;
+            padding: 12px !important;
             border: 1px solid #e2ece6 !important;
-            border-radius: 18px !important;
+            border-radius: 16px !important;
             background: #ffffff !important;
-            box-shadow: 0 18px 40px rgba(15, 35, 24, 0.08) !important;
+            box-shadow: 0 14px 32px rgba(15, 35, 24, 0.08) !important;
             z-index: 3200 !important;
         }
 
@@ -2545,7 +2549,7 @@ body.user-site-shell {
             flex-direction: column !important;
             align-items: stretch !important;
             gap: 2px !important;
-            margin: 0 0 12px !important;
+            margin: 0 0 10px !important;
         }
 
             body.user-site-shell .user-header .user-nav-list .nav-link,
@@ -2553,8 +2557,8 @@ body.user-site-shell {
             body.user-site-shell .user-header .user-nav-list .nav-link:focus {
                 justify-content: flex-start !important;
                 width: 100% !important;
-                min-height: 42px !important;
-                padding: 10px 12px !important;
+                min-height: 40px !important;
+                padding: 9px 12px !important;
                 border-radius: 12px !important;
                 font-size: 14px !important;
             }
@@ -2569,31 +2573,32 @@ body.user-site-shell {
             width: 100% !important;
             justify-content: space-between !important;
             gap: 10px !important;
-            padding-top: 12px !important;
+            padding-top: 10px !important;
             border-top: 1px solid #edf4f0 !important;
         }
 
         body.user-site-shell .user-header .user-menu-trigger {
-            width: 40px !important;
-            height: 40px !important;
+            width: 36px !important;
+            height: 36px !important;
         }
 
         body.user-site-shell .user-header a.user-auth-btn,
         body.user-site-shell .user-header button.user-auth-btn {
             flex: 1 1 auto !important;
             min-width: 0 !important;
-            height: 42px !important;
-            padding: 0 16px !important;
+            height: 38px !important;
+            padding: 0 14px !important;
+            font-size: 13px !important;
         }
 }
 
 @media (max-width: 575.98px) {
     html {
-        scroll-padding-top: 70px;
+        scroll-padding-top: 50px;
     }
 
     body.user-site-shell {
-        padding-top: 62px !important;
+        padding-top: 44px !important;
     }
 
         body.user-site-shell .user-header > .container,
@@ -2603,36 +2608,36 @@ body.user-site-shell {
 
         body.user-site-shell .user-header .user-navbar,
         body.user-site-shell .user-header .navbar {
-            min-height: 62px !important;
-            height: 62px !important;
-            gap: 10px !important;
+            min-height: 50px !important;
+            height: 50px !important;
+            gap: 8px !important;
         }
 
         body.user-site-shell .user-header .user-brand img,
         body.user-site-shell .user-header .user-brand-logo,
         body.user-site-shell .user-header .navbar-brand img,
         body.user-site-shell .user-header #site-logo {
-            max-height: 28px !important;
+            max-height: 26px !important;
         }
 
         body.user-site-shell .user-header .user-navbar-collapse {
-            padding: 12px !important;
+            padding: 10px !important;
         }
 
         body.user-site-shell .user-header .user-menu-trigger {
-            width: 38px !important;
-            height: 38px !important;
+            width: 34px !important;
+            height: 34px !important;
         }
 
         body.user-site-shell .user-header .user-menu-icon {
-            width: 17px !important;
-            height: 17px !important;
+            width: 15px !important;
+            height: 15px !important;
         }
 
         body.user-site-shell .user-header a.user-auth-btn,
         body.user-site-shell .user-header button.user-auth-btn {
-            height: 40px !important;
-            padding: 0 14px !important;
-            font-size: 13px !important;
+            height: 36px !important;
+            padding: 0 12px !important;
+            font-size: 12px !important;
         }
 }
